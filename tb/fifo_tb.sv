@@ -35,15 +35,18 @@ module fifo_tb;
   initial clk = 0;
   always #5 clk = ~clk;
 
-  // Coverage Groups
-  covergroup fifo_cg @(posedge clk);
-    cp_full  : coverpoint full  { bins full_high  = {1}; bins full_low  = {0}; }
-    cp_empty : coverpoint empty { bins empty_high = {1}; bins empty_low = {0}; }
-    cp_wr_en : coverpoint wr_en { bins wr_high    = {1}; bins wr_low    = {0}; }
-    cp_rd_en : coverpoint rd_en { bins rd_high    = {1}; bins rd_low    = {0}; }
-  endgroup
+  // Coverage tracking (Icarus compatible)
+  integer cov_full_seen  = 0;
+  integer cov_empty_seen = 0;
+  integer cov_wr_seen    = 0;
+  integer cov_rd_seen    = 0;
 
-  fifo_cg cg_inst = new();
+  always @(posedge clk) begin
+    if (full)  cov_full_seen  = 1;
+    if (empty) cov_empty_seen = 1;
+    if (wr_en) cov_wr_seen    = 1;
+    if (rd_en) cov_rd_seen    = 1;
+  end
 
   // Tasks
   task write_fifo(input logic [WIDTH-1:0] data);
@@ -128,7 +131,11 @@ module fifo_tb;
     $display("================================\n");
 
     // Coverage Report
-    $display("Functional Coverage: %0.2f%%", cg_inst.get_coverage());
+    begin
+  integer cov_total;
+  cov_total = cov_full_seen + cov_empty_seen + cov_wr_seen + cov_rd_seen;
+  $display("Functional Coverage: %0.2f%%", (cov_total / 4.0) * 100.0);
+end
 
     $finish;
   end
