@@ -25,7 +25,7 @@ This project demonstrates a **production-style verification pipeline** that:
 
 ## 🗂️ Project Structure
 
-'''
+```
 dv-regression-pipeline/
 │
 ├── rtl/
@@ -43,7 +43,7 @@ dv-regression-pipeline/
 │       └── regression.yml       # GitHub Actions CI/CD pipeline
 └── README.md
 
-'''
+```
 
 ## 🧪 Test Cases
 
