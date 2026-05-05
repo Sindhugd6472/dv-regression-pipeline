@@ -1,0 +1,66 @@
+# GitHub Actions CI/CD Pipeline
+# Auto-runs simulation on every push
+# Author: Sindhu Govindareddy Doddamane
+
+name: DV Regression Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # Step 2: Install Icarus Verilog
+      - name: Install Icarus Verilog
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y iverilog
+
+      # Step 3: Install Python dependencies
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      # Step 4: Compile RTL + Testbench
+      - name: Compile Design
+        run: |
+          iverilog -g2012 -o sim/fifo_sim \
+            rtl/fifo.sv \
+            tb/fifo_tb.sv
+          echo "✅ Compilation Successful"
+
+      # Step 5: Run Simulation
+      - name: Run Simulation
+        run: |
+          vvp sim/fifo_sim | tee sim/sim_results.log
+          echo "✅ Simulation Complete"
+
+      # Step 6: Parse Coverage
+      - name: Parse Coverage Report
+        run: |
+          python3 coverage/parse_coverage.py \
+            sim/sim_results.log
+          echo "✅ Coverage Parsed"
+
+      # Step 7: Generate Dashboard
+      - name: Generate Dashboard
+        run: |
+          python3 dashboard/generate_dashboard.py
+          echo "✅ Dashboard Generated"
+
+      # Step 8: Upload Dashboard as Artifact
+      - name: Upload Dashboard
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-dashboard
+          path: dashboard/index.html
