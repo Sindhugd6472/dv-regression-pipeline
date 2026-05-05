@@ -60,7 +60,7 @@ jobs:
 
       # Step 8: Upload Dashboard as Artifact
       - name: Upload Dashboard
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-dashboard
           path: dashboard/index.html
