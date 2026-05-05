@@ -102,6 +102,7 @@ python3 dashboard/generate_dashboard.py
 
 ## ⚙️ CI/CD Pipeline
 
+```
 Every push to `main` automatically:
 Push to GitHub
 ↓
@@ -117,6 +118,7 @@ Generate HTML Dashboard
 ↓
 Upload Dashboard Artifact
 
+```
 ---
 
 ## 🛠️ Tools & Technologies
