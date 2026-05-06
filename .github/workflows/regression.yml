@@ -1,5 +1,5 @@
-# GitHub Actions CI/CD Pipeline
-# Auto-runs simulation on every push
+# Generic DV Regression Pipeline
+# Auto-detects ANY .sv files in rtl/ and tb/
 # Author: Sindhu Govindareddy Doddamane
 
 name: DV Regression Pipeline
@@ -25,42 +25,55 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y iverilog
 
-      # Step 3: Install Python dependencies
+      # Step 3: Install Python
       - name: Install Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      # Step 4: Compile RTL + Testbench
+      # Step 4: Auto-detect design name
+      - name: Detect Design
+        run: |
+          RTL_FILE=$(ls rtl/*.sv | head -1)
+          DESIGN=$(basename $RTL_FILE .sv)
+          echo "DESIGN_NAME=$DESIGN" >> $GITHUB_ENV
+          echo "Detected design: $DESIGN"
+
+      # Step 5: Compile ALL .sv files automatically
       - name: Compile Design
         run: |
-          iverilog -g2012 -o sim/fifo_sim \
-            rtl/fifo.sv \
-            tb/fifo_tb.sv
+          RTL_FILES=$(ls rtl/*.sv | tr '\n' ' ')
+          TB_FILES=$(ls tb/*.sv | tr '\n' ' ')
+          echo "RTL: $RTL_FILES"
+          echo "TB : $TB_FILES"
+          mkdir -p sim
+          iverilog -g2012 -o sim/${{ env.DESIGN_NAME }}_sim \
+            $RTL_FILES $TB_FILES
           echo "✅ Compilation Successful"
 
-      # Step 5: Run Simulation
+      # Step 6: Run Simulation
       - name: Run Simulation
         run: |
-          vvp sim/fifo_sim | tee sim/sim_results.log
+          vvp sim/${{ env.DESIGN_NAME }}_sim | tee sim/sim_results.log
           echo "✅ Simulation Complete"
 
-      # Step 6: Parse Coverage
+      # Step 7: Parse Coverage
       - name: Parse Coverage Report
         run: |
           python3 coverage/parse_coverage.py \
-            sim/sim_results.log
+            sim/sim_results.log \
+            ${{ env.DESIGN_NAME }}
           echo "✅ Coverage Parsed"
 
-      # Step 7: Generate Dashboard
+      # Step 8: Generate Dashboard
       - name: Generate Dashboard
         run: |
           python3 dashboard/generate_dashboard.py
           echo "✅ Dashboard Generated"
 
-      # Step 8: Upload Dashboard as Artifact
+      # Step 9: Upload Dashboard
       - name: Upload Dashboard
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-dashboard
+          name: coverage-dashboard-${{ env.DESIGN_NAME }}
           path: dashboard/index.html
