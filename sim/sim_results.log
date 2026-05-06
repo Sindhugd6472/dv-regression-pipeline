@@ -1,19 +1,19 @@
-VCD info: dumpfile sim/fifo_tb.vcd opened for output.
+VCD info: dumpfile sim/counter_tb.vcd opened for output.
 
---- Test 1: Fill FIFO ---
-PASS: FIFO is FULL as expected
+--- Test 1: Count Up ---
+PASS: Count up to 5 correctly
 
---- Test 2: Write when FULL ---
-PASS: Write ignored when FULL
+--- Test 2: Count Down ---
+PASS: Count down to 2 correctly
 
---- Test 3: Drain FIFO ---
-PASS: FIFO is EMPTY as expected
+--- Test 3: Load Value ---
+PASS: Load value 10 correctly
 
---- Test 4: Read when EMPTY ---
-PASS: Read ignored when EMPTY
+--- Test 4: Overflow Detection ---
+PASS: Overflow detected correctly
 
---- Test 5: Simultaneous Read/Write ---
-PASS: Simultaneous RD/WR completed
+--- Test 5: Reset ---
+PASS: Reset works correctly
 
 ================================
   TEST SUMMARY
@@ -22,4 +22,4 @@ PASS: Simultaneous RD/WR completed
 ================================
 
 Functional Coverage: 100.00%
-tb/fifo_tb.sv:140: $finish called at 415000 (1ps)
+tb2/counter_tb.sv:134: $finish called at 135000 (1ps)

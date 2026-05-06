@@ -168,7 +168,7 @@ def generate_dashboard(results):
 <body>
 
     <h1>🔬 DV Regression Dashboard</h1>
-    <p class="subtitle">FIFO Controller Verification | Sindhu Govindareddy Doddamane</p>
+    <p class="subtitle">{results.get('design_name', 'Design').upper()} Verification | Sindhu Govindareddy Doddamane</p>
 
     <!-- Summary Cards -->
     <div class="cards">

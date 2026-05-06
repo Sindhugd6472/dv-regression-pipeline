@@ -1,23 +1,24 @@
 {
+  "design_name": "counter",
   "tests": [
     {
-      "name": "FIFO is FULL as expected",
+      "name": "Count up to 5 correctly",
       "status": "PASS"
     },
     {
-      "name": "Write ignored when FULL",
+      "name": "Count down to 2 correctly",
       "status": "PASS"
     },
     {
-      "name": "FIFO is EMPTY as expected",
+      "name": "Load value 10 correctly",
       "status": "PASS"
     },
     {
-      "name": "Read ignored when EMPTY",
+      "name": "Overflow detected correctly",
       "status": "PASS"
     },
     {
-      "name": "Simultaneous RD/WR completed",
+      "name": "Reset works correctly",
       "status": "PASS"
     }
   ],
