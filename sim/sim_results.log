@@ -1,0 +1,25 @@
+VCD info: dumpfile sim/fifo_tb.vcd opened for output.
+
+--- Test 1: Fill FIFO ---
+PASS: FIFO is FULL as expected
+
+--- Test 2: Write when FULL ---
+PASS: Write ignored when FULL
+
+--- Test 3: Drain FIFO ---
+PASS: FIFO is EMPTY as expected
+
+--- Test 4: Read when EMPTY ---
+PASS: Read ignored when EMPTY
+
+--- Test 5: Simultaneous Read/Write ---
+PASS: Simultaneous RD/WR completed
+
+================================
+  TEST SUMMARY
+  PASSED : 5
+  FAILED : 0
+================================
+
+Functional Coverage: 100.00%
+tb/fifo_tb.sv:140: $finish called at 415000 (1ps)

@@ -1,0 +1,30 @@
+{
+  "tests": [
+    {
+      "name": "FIFO is FULL as expected",
+      "status": "PASS"
+    },
+    {
+      "name": "Write ignored when FULL",
+      "status": "PASS"
+    },
+    {
+      "name": "FIFO is EMPTY as expected",
+      "status": "PASS"
+    },
+    {
+      "name": "Read ignored when EMPTY",
+      "status": "PASS"
+    },
+    {
+      "name": "Simultaneous RD/WR completed",
+      "status": "PASS"
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 0,
+    "total": 5
+  },
+  "coverage": 100.0
+}
