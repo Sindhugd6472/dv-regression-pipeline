@@ -1,5 +1,5 @@
 # Generic DV Regression Pipeline
-# Auto-detects ANY .sv files in rtl/ and tb/
+# Runs ALL designs automatically
 # Author: Sindhu Govindareddy Doddamane
 
 name: DV Regression Pipeline
@@ -10,72 +10,102 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
-  regression:
+  # ── Job 1: FIFO ──────────────────────────────
+  fifo_regression:
+    name: FIFO Verification
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
-      # Step 1: Checkout code
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Step 2: Install Icarus Verilog
       - name: Install Icarus Verilog
         run: |
           sudo apt-get update
           sudo apt-get install -y iverilog
 
-      # Step 3: Install Python
       - name: Install Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      # Step 4: Auto-detect design name
-      - name: Detect Design
+      - name: Compile FIFO
         run: |
-          RTL_FILE=$(ls rtl/*.sv | head -1)
-          DESIGN=$(basename $RTL_FILE .sv)
-          echo "DESIGN_NAME=$DESIGN" >> $GITHUB_ENV
-          echo "Detected design: $DESIGN"
-
-      # Step 5: Compile ALL .sv files automatically
-      - name: Compile Design
-        run: |
-          RTL_FILES=$(ls rtl/*.sv | tr '\n' ' ')
-          TB_FILES=$(ls tb/*.sv | tr '\n' ' ')
-          echo "RTL: $RTL_FILES"
-          echo "TB : $TB_FILES"
           mkdir -p sim
-          iverilog -g2012 -o sim/${{ env.DESIGN_NAME }}_sim \
-            $RTL_FILES $TB_FILES
-          echo "✅ Compilation Successful"
+          iverilog -g2012 -o sim/fifo_sim \
+            rtl/fifo.sv tb/fifo_tb.sv
+          echo "✅ FIFO Compilation Done"
 
-      # Step 6: Run Simulation
-      - name: Run Simulation
+      - name: Run FIFO Simulation
         run: |
-          vvp sim/${{ env.DESIGN_NAME }}_sim | tee sim/sim_results.log
-          echo "✅ Simulation Complete"
+          vvp sim/fifo_sim | tee sim/sim_results.log
+          echo "✅ FIFO Simulation Done"
 
-      # Step 7: Parse Coverage
-      - name: Parse Coverage Report
+      - name: Parse FIFO Coverage
         run: |
           python3 coverage/parse_coverage.py \
-            sim/sim_results.log \
-            ${{ env.DESIGN_NAME }}
-          echo "✅ Coverage Parsed"
+            sim/sim_results.log fifo
+          echo "✅ FIFO Coverage Parsed"
 
-      # Step 8: Generate Dashboard
-      - name: Generate Dashboard
+      - name: Generate FIFO Dashboard
         run: |
           python3 dashboard/generate_dashboard.py
-          echo "✅ Dashboard Generated"
+          echo "✅ FIFO Dashboard Generated"
 
-      # Step 9: Upload Dashboard
-      - name: Upload Dashboard
+      - name: Upload FIFO Dashboard
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-dashboard-${{ env.DESIGN_NAME }}
+          name: coverage-dashboard-fifo
+          path: dashboard/index.html
+
+  # ── Job 2: Counter ────────────────────────────
+  counter_regression:
+    name: Counter Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Icarus Verilog
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y iverilog
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Compile Counter
+        run: |
+          mkdir -p sim
+          iverilog -g2012 -o sim/counter_sim \
+            rtl2/counter.sv tb2/counter_tb.sv
+          echo "✅ Counter Compilation Done"
+
+      - name: Run Counter Simulation
+        run: |
+          vvp sim/counter_sim | tee sim/sim_results.log
+          echo "✅ Counter Simulation Done"
+
+      - name: Parse Counter Coverage
+        run: |
+          python3 coverage/parse_coverage.py \
+            sim/sim_results.log counter
+          echo "✅ Counter Coverage Parsed"
+
+      - name: Generate Counter Dashboard
+        run: |
+          python3 dashboard/generate_dashboard.py
+          echo "✅ Counter Dashboard Generated"
+
+      - name: Upload Counter Dashboard
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-dashboard-counter
           path: dashboard/index.html
