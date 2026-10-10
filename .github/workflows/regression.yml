@@ -1,12 +1,8 @@
-# Generic DV Regression Pipeline
-# Runs ALL designs automatically
-# Author: Sindhu Govindareddy Doddamane
-
-name: DV Regression Pipeline
+name: EDA Regression Automation
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, eda-tooling-refresh ]
   pull_request:
     branches: [ main ]
 
@@ -14,13 +10,34 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  # ── Job 1: FIFO ──────────────────────────────
-  fifo_regression:
-    name: FIFO Verification
+  python_quality:
+    name: Python Tooling Tests
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Validate regression configuration
+        run: python tools/run_regression.py --list
+
+  rtl_regression:
+    name: RTL Regression
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        design: [fifo, counter]
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install Icarus Verilog
@@ -28,84 +45,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y iverilog
 
-      - name: Install Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: "3.11"
 
-      - name: Compile FIFO
+      - name: Run configured regression job
+        run: python tools/run_regression.py --job ${{ matrix.design }}
+
+      - name: Parse regression results
         run: |
-          mkdir -p sim
-          iverilog -g2012 -o sim/fifo_sim \
-            rtl/fifo.sv tb/fifo_tb.sv
-          echo "✅ FIFO Compilation Done"
+          python coverage/parse_coverage.py             sim/${{ matrix.design }}_results.log             --design ${{ matrix.design }}             --output coverage/${{ matrix.design }}_report.json             --fail-on-test-failure
 
-      - name: Run FIFO Simulation
-        run: |
-          vvp sim/fifo_sim | tee sim/sim_results.log
-          echo "✅ FIFO Simulation Done"
-
-      - name: Parse FIFO Coverage
-        run: |
-          python3 coverage/parse_coverage.py \
-            sim/sim_results.log fifo
-          echo "✅ FIFO Coverage Parsed"
-
-      - name: Generate FIFO Dashboard
-        run: |
-          python3 dashboard/generate_dashboard.py
-          echo "✅ FIFO Dashboard Generated"
-
-      - name: Upload FIFO Dashboard
+      - name: Upload structured regression report
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-dashboard-fifo
-          path: dashboard/index.html
-
-  # ── Job 2: Counter ────────────────────────────
-  counter_regression:
-    name: Counter Verification
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Install Icarus Verilog
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y iverilog
-
-      - name: Install Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-
-      - name: Compile Counter
-        run: |
-          mkdir -p sim
-          iverilog -g2012 -o sim/counter_sim \
-            rtl2/counter.sv tb2/counter_tb.sv
-          echo "✅ Counter Compilation Done"
-
-      - name: Run Counter Simulation
-        run: |
-          vvp sim/counter_sim | tee sim/sim_results.log
-          echo "✅ Counter Simulation Done"
-
-      - name: Parse Counter Coverage
-        run: |
-          python3 coverage/parse_coverage.py \
-            sim/sim_results.log counter
-          echo "✅ Counter Coverage Parsed"
-
-      - name: Generate Counter Dashboard
-        run: |
-          python3 dashboard/generate_dashboard.py
-          echo "✅ Counter Dashboard Generated"
-
-      - name: Upload Counter Dashboard
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-dashboard-counter
-          path: dashboard/index.html
+          name: regression-report-${{ matrix.design }}
+          path: coverage/${{ matrix.design }}_report.json

@@ -1,148 +1,199 @@
-# dv-regression-pipeline
-Automated RTL verification pipeline with CI/CD and live coverage dashboard
-
-markdown# 🔬 DV Regression Pipeline
+# EDA Regression Automation Toolkit
 
 ![CI](https://github.com/Sindhugd6472/dv-regression-pipeline/actions/workflows/regression.yml/badge.svg)
-![Language](https://img.shields.io/badge/Language-SystemVerilog-blue)
-![Python](https://img.shields.io/badge/Python-3.10-green)
-![Coverage](https://img.shields.io/badge/Functional%20Coverage-98%25-brightgreen)
-![License](https://img.shields.io/badge/License-MIT-yellow)
+![Python](https://img.shields.io/badge/Python-3.11-blue)
+![SystemVerilog](https://img.shields.io/badge/SystemVerilog-RTL%20Verification-orange)
+![CI/CD](https://img.shields.io/badge/CI-GitHub%20Actions-success)
 
-> Automated RTL verification pipeline with CI/CD and live coverage dashboard — built for a synchronous FIFO controller using SystemVerilog, Icarus Verilog, Python, and GitHub Actions.
+A lightweight EDA/verification automation project that demonstrates how Python, shell-style flow orchestration, CI, and structured reporting can be used to make RTL regressions easier to run and analyze.
 
----
+## Why this project
 
-## 📌 Project Overview
+Semiconductor teams rely on repeatable automation around compile, simulation, regression, log parsing, reporting, and CI. This repository models that workflow with open-source tools so the full pipeline can be run locally or in GitHub Actions.
 
-This project demonstrates a **production-style verification pipeline** that:
-- ✅ Compiles and simulates RTL automatically on every Git push
-- ✅ Parses simulation logs and extracts functional coverage
-- ✅ Generates a live HTML coverage dashboard
-- ✅ Runs end-to-end in the cloud using GitHub Actions CI/CD
+The project is intentionally split into reusable tooling and example RTL workloads. The Python utilities are not tied to a single DUT.
 
----
+## What it demonstrates
 
-## 🗂️ Project Structure
+- Config-driven regression execution
+- Python command-line tooling
+- Compile and simulation orchestration
+- PASS/FAIL and functional-coverage log parsing
+- JSON report generation
+- Automated unit tests
+- GitHub Actions CI
+- Matrix regression across multiple designs
+- Reusable flow structure for EDA/verification infrastructure
 
+## Architecture
+
+```text
+config/regression_jobs.json
+          |
+          v
+tools/run_regression.py
+          |
+          +--> compile RTL
+          +--> launch simulation
+          +--> capture logs
+                    |
+                    v
+        coverage/parse_coverage.py
+                    |
+                    v
+          structured JSON report
+                    |
+                    v
+             CI artifacts
 ```
-dv-regression-pipeline/
-│
-├── rtl/
-│   └── fifo.sv                  # Synchronous FIFO DUT (8x8)
-├── tb/
-│   └── fifo_tb.sv               # SystemVerilog Testbench + Coverage
-├── sim/
-│   └── Makefile                 # Simulation automation
+
+## Repository structure
+
+```text
+.
+├── config/
+│   └── regression_jobs.json     # Declarative regression job definitions
 ├── coverage/
-│   └── parse_coverage.py        # Python coverage log parser
-├── dashboard/
-│   └── generate_dashboard.py    # HTML dashboard generator
-├── .github/
-│   └── workflows/
-│       └── regression.yml       # GitHub Actions CI/CD pipeline
-└── README.md
-
+│   ├── __init__.py
+│   └── parse_coverage.py        # Reusable log/report parser
+├── tools/
+│   └── run_regression.py        # Config-driven regression launcher
+├── tests/
+│   └── test_parse_coverage.py   # Python unit tests
+├── rtl/                         # FIFO RTL example
+├── tb/                          # FIFO verification workload
+├── rtl2/                        # Counter RTL example
+├── tb2/                         # Counter verification workload
+└── .github/workflows/
+    └── regression.yml           # CI + matrix regression
 ```
 
-## 🧪 Test Cases
+## Quick start
 
-| Test | Description | Status |
-|------|-------------|--------|
-| Fill FIFO | Write until FULL flag asserts | ✅ PASS |
-| Overflow Protection | Write when FULL is ignored | ✅ PASS |
-| Drain FIFO | Read until EMPTY flag asserts | ✅ PASS |
-| Underflow Protection | Read when EMPTY is ignored | ✅ PASS |
-| Simultaneous RD/WR | Concurrent read and write | ✅ PASS |
+### Requirements
 
----
+- Python 3.10+
+- Icarus Verilog
+- Make is optional
 
-## 📊 Coverage Results
+Ubuntu:
 
-| Coverage Type | Result |
-|---------------|--------|
-| Functional Coverage | 98%+ |
-| Full Flag | ✅ Covered |
-| Empty Flag | ✅ Covered |
-| Write Enable | ✅ Covered |
-| Read Enable | ✅ Covered |
-
----
-
-## 🚀 How to Run Locally
-
-### Prerequisites
 ```bash
-# Install Icarus Verilog
-sudo apt-get install iverilog   # Linux
-brew install icarus-verilog     # Mac
+sudo apt-get update
+sudo apt-get install -y iverilog
 ```
 
-### Run Everything
+macOS:
+
 ```bash
-cd sim
-make all
+brew install icarus-verilog
 ```
 
-### Run Steps Individually
+### List configured jobs
+
 ```bash
-make compile    # Compile RTL + Testbench
-make simulate   # Run simulation
-make coverage   # Parse coverage report
-make clean      # Clean generated files
+python tools/run_regression.py --list
 ```
 
-### Generate Dashboard
+### Run one regression
+
 ```bash
-python3 dashboard/generate_dashboard.py
-# Open dashboard/index.html in your browser
+python tools/run_regression.py --job fifo
 ```
 
----
+### Run all configured regressions
 
-## ⚙️ CI/CD Pipeline
-
+```bash
+python tools/run_regression.py
 ```
-Every push to `main` automatically:
-Push to GitHub
-↓
-Install Icarus Verilog
-↓
-Compile RTL + Testbench
-↓
-Run Simulation
-↓
-Parse Coverage Log
-↓
-Generate HTML Dashboard
-↓
-Upload Dashboard Artifact
 
+### Parse a log into JSON
+
+```bash
+python coverage/parse_coverage.py \
+  sim/fifo_results.log \
+  --design fifo \
+  --output coverage/fifo_report.json \
+  --fail-on-test-failure
 ```
----
 
-## 🛠️ Tools & Technologies
+### Run unit tests
 
-| Tool | Purpose |
-|------|---------|
-| SystemVerilog | RTL Design & Testbench |
-| Icarus Verilog | Open-source Simulator |
-| Python 3.10 | Coverage parsing & Dashboard |
-| GitHub Actions | CI/CD Automation |
-| GTKWave | Waveform Viewing |
-| Make | Build Automation |
+```bash
+python -m unittest discover -s tests -v
+```
 
----
+## Example configuration
 
-## 👩‍💻 Author
+```json
+{
+  "jobs": [
+    {
+      "name": "fifo",
+      "compile": "iverilog -g2012 -o sim/fifo_sim rtl/fifo.sv tb/fifo_tb.sv",
+      "run": "vvp sim/fifo_sim",
+      "log": "sim/fifo_results.log"
+    }
+  ]
+}
+```
 
-**Sindhu Govindareddy Doddamane**  
-Design Verification Engineer  
-📧 sindhug6472@gmail.com  
-🔗 [LinkedIn](https://linkedin.com/in/sindhu-govindareddy-doddamane-801300237)  
-🐙 [GitHub](https://github.com/Sindhugd6472)
+The runner reads this configuration rather than hard-coding each design into the Python implementation. This makes it straightforward to add another regression workload without changing the orchestration code.
 
----
+## CI workflow
 
-## 📄 License
-MIT License — free to use and modify.
+Every pull request runs:
+
+1. Python unit tests
+2. Configuration validation
+3. FIFO regression
+4. Counter regression
+5. Structured report generation
+6. Artifact upload
+
+The RTL jobs run through a GitHub Actions matrix so additional designs can be added with minimal workflow duplication.
+
+## Skills demonstrated
+
+**Software / automation**
+- Python
+- CLI design
+- Configuration-driven tooling
+- JSON
+- Unit testing
+- Error handling
+- Git / GitHub Actions
+- CI/CD
+
+**Semiconductor / EDA context**
+- RTL simulation
+- Regression execution
+- Verification log parsing
+- Functional coverage reporting
+- SystemVerilog
+- Icarus Verilog
+
+## Roadmap
+
+Planned improvements include:
+
+- parallel/local job execution
+- runtime and failure-signature collection
+- regression history/trend reports
+- YAML configuration support
+- richer HTML dashboard generation
+- Tcl/shell integration examples
+- pluggable simulator adapters
+
+## Author
+
+**Sindhu Govindareddy Doddamane**
+
+Semiconductor verification engineer building toward EDA software, design-enablement, and flow-automation roles.
+
+- GitHub: https://github.com/Sindhugd6472
+- LinkedIn: https://linkedin.com/in/sindhu-govindareddy-doddamane-801300237
+
+## License
+
+MIT
