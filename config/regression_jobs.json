@@ -1,0 +1,16 @@
+{
+  "jobs": [
+    {
+      "name": "fifo",
+      "compile": "iverilog -g2012 -o sim/fifo_sim rtl/fifo.sv tb/fifo_tb.sv",
+      "run": "vvp sim/fifo_sim",
+      "log": "sim/fifo_results.log"
+    },
+    {
+      "name": "counter",
+      "compile": "iverilog -g2012 -o sim/counter_sim rtl2/counter.sv tb2/counter_tb.sv",
+      "run": "vvp sim/counter_sim",
+      "log": "sim/counter_results.log"
+    }
+  ]
+}
