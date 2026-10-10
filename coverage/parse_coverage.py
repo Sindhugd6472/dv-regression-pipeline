@@ -1,101 +1,104 @@
-# Generic Coverage Parser
-# Works with ANY design — reads PASS/FAIL from any simulation log
-# Author: Sindhu Govindareddy Doddamane
+#!/usr/bin/env python3
+"""Parse simulation logs into a structured regression report."""
 
-import sys
-import re
+from __future__ import annotations
+
+import argparse
 import json
-import os
+import re
+from pathlib import Path
+from typing import Any
 
-def parse_results(log_file, design_name="Unknown"):
-    """Parse simulation log for any design"""
 
-    results = {
+PASS_PREFIX = "PASS:"
+FAIL_PREFIX = "FAIL:"
+COVERAGE_RE = re.compile(r"Functional Coverage:\s*(\d+(?:\.\d+)?)%")
+
+
+def parse_results(log_file: Path, design_name: str) -> dict[str, Any]:
+    if not log_file.exists():
+        raise FileNotFoundError(f"Log file not found: {log_file}")
+
+    results: dict[str, Any] = {
         "design_name": design_name,
         "tests": [],
-        "summary": {
-            "passed": 0,
-            "failed": 0,
-            "total": 0
-        },
-        "coverage": 0.0
+        "summary": {"passed": 0, "failed": 0, "total": 0},
+        "coverage": 0.0,
     }
 
-    if not os.path.exists(log_file):
-        print(f"ERROR: Log file '{log_file}' not found!")
-        sys.exit(1)
+    for raw_line in log_file.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw_line.strip()
 
-    with open(log_file, 'r') as f:
-        lines = f.readlines()
-
-    for line in lines:
-        line = line.strip()
-
-        if line.startswith("PASS:"):
-            results["tests"].append({
-                "name": line.replace("PASS:", "").strip(),
-                "status": "PASS"
-            })
+        if line.startswith(PASS_PREFIX):
+            name = line.removeprefix(PASS_PREFIX).strip()
+            results["tests"].append({"name": name, "status": "PASS"})
             results["summary"]["passed"] += 1
-
-        elif line.startswith("FAIL:"):
-            results["tests"].append({
-                "name": line.replace("FAIL:", "").strip(),
-                "status": "FAIL"
-            })
+        elif line.startswith(FAIL_PREFIX):
+            name = line.removeprefix(FAIL_PREFIX).strip()
+            results["tests"].append({"name": name, "status": "FAIL"})
             results["summary"]["failed"] += 1
 
-        elif "Functional Coverage:" in line:
-            match = re.search(r"(\d+\.\d+)%", line)
-            if match:
-                results["coverage"] = float(match.group(1))
+        match = COVERAGE_RE.search(line)
+        if match:
+            results["coverage"] = float(match.group(1))
 
     results["summary"]["total"] = (
-        results["summary"]["passed"] +
-        results["summary"]["failed"]
+        results["summary"]["passed"] + results["summary"]["failed"]
     )
-
     return results
 
 
-def print_report(results):
-    """Print clean summary"""
-    print("\n" + "="*50)
-    print(f"  VERIFICATION REPORT — {results['design_name'].upper()}")
-    print("="*50)
-
-    for test in results["tests"]:
-        icon = "✅" if test["status"] == "PASS" else "❌"
-        print(f"  {icon}  {test['name']}")
-
-    print("-"*50)
-    print(f"  Total Tests : {results['summary']['total']}")
-    print(f"  Passed      : {results['summary']['passed']}")
-    print(f"  Failed      : {results['summary']['failed']}")
-    print(f"  Coverage    : {results['coverage']:.2f}%")
-    print("="*50 + "\n")
+def save_json(results: dict[str, Any], output_file: Path) -> None:
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    output_file.write_text(json.dumps(results, indent=2), encoding="utf-8")
 
 
-def save_json(results):
-    """Save results as JSON for dashboard"""
-    os.makedirs("coverage", exist_ok=True)
-    output_file = "coverage/coverage_report.json"
-    with open(output_file, 'w') as f:
-        json.dump(results, f, indent=2)
-    print(f"📊 Report saved to {output_file}")
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Parse PASS/FAIL markers and functional coverage from a simulation log."
+    )
+    parser.add_argument("log_file", type=Path, help="Simulation log to parse")
+    parser.add_argument(
+        "--design",
+        default="unknown-design",
+        help="Friendly design name stored in the report",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("coverage/coverage_report.json"),
+        help="JSON report path",
+    )
+    parser.add_argument(
+        "--fail-on-test-failure",
+        action="store_true",
+        help="Return a non-zero exit code when one or more tests fail",
+    )
+    return parser
+
+
+def main() -> int:
+    args = build_parser().parse_args()
+
+    try:
+        results = parse_results(args.log_file, args.design)
+    except FileNotFoundError as exc:
+        print(f"ERROR: {exc}")
+        return 2
+
+    save_json(results, args.output)
+
+    summary = results["summary"]
+    print(
+        f"{args.design}: {summary['passed']} passed, "
+        f"{summary['failed']} failed, coverage={results['coverage']:.2f}%"
+    )
+    print(f"Report: {args.output}")
+
+    if args.fail_on_test_failure and summary["failed"]:
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python3 parse_coverage.py <log_file> [design_name]")
-        sys.exit(1)
-
-    log_file    = sys.argv[1]
-    design_name = sys.argv[2] if len(sys.argv) > 2 else "Unknown Design"
-
-    results = parse_results(log_file, design_name)
-    print_report(results)
-    save_json(results)
-    
-
-
+    raise SystemExit(main())
