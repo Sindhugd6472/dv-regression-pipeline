@@ -29,7 +29,7 @@ module counter #(
     end
   end
 
-  assign overflow  = (count == 4'hF) && enable && up_down;
-  assign underflow = (count == 4'h0) && enable && !up_down;
+  assign overflow  = (&count) && enable && up_down;
+  assign underflow = (count == '0) && enable && !up_down;
 
 endmodule

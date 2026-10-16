@@ -17,23 +17,29 @@ module fifo #(
 );
 
   logic [WIDTH-1:0] mem [0:DEPTH-1];
-  logic [$clog2(DEPTH):0] wr_ptr, rd_ptr, count;
+  localparam PTR_W = (DEPTH > 1) ? $clog2(DEPTH) : 1;
+  logic [PTR_W-1:0] wr_ptr, rd_ptr;
+  logic [$clog2(DEPTH+1)-1:0] count;
+
+  initial begin
+    if (DEPTH < 1 || WIDTH < 1) $fatal(1, "DEPTH and WIDTH must be positive");
+  end
 
   // Write Logic
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) wr_ptr <= 0;
     else if (wr_en && !full) begin
       mem[wr_ptr] <= din;
-      wr_ptr <= wr_ptr + 1;
+      wr_ptr <= (wr_ptr == DEPTH-1) ? '0 : wr_ptr + 1'b1;
     end
   end
 
   // Read Logic
   always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) rd_ptr <= 0;
+    if (!rst_n) begin rd_ptr <= 0; dout <= '0; end
     else if (rd_en && !empty) begin
       dout  <= mem[rd_ptr];
-      rd_ptr <= rd_ptr + 1;
+      rd_ptr <= (rd_ptr == DEPTH-1) ? '0 : rd_ptr + 1'b1;
     end
   end
 

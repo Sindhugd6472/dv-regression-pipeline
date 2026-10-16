@@ -1,0 +1,9 @@
+
+obj_dir/
+*.vcd
+*.log
+__pycache__/
+core
+core.*
+
+sim/*_sim

@@ -2,6 +2,7 @@
 # Reads coverage_report.json and generates HTML dashboard
 # Author: Sindhu Govindareddy Doddamane
 
+from html import escape
 import json
 import os
 
@@ -29,8 +30,8 @@ def generate_dashboard(results):
         test_rows += f"""
         <tr style="background:{color}">
             <td>{icon}</td>
-            <td>{test['name']}</td>
-            <td><b>{test['status']}</b></td>
+            <td>{escape(str(test['name']))}</td>
+            <td><b>{escape(str(test['status']))}</b></td>
         </tr>"""
 
     # Coverage bar color
@@ -168,7 +169,7 @@ def generate_dashboard(results):
 <body>
 
     <h1>🔬 DV Regression Dashboard</h1>
-    <p class="subtitle">{results.get('design_name', 'Design').upper()} Verification | Sindhu Govindareddy Doddamane</p>
+    <p class="subtitle">{escape(str(results.get('design_name', 'Design')).upper())} Verification | Sindhu Govindareddy Doddamane</p>
 
     <!-- Summary Cards -->
     <div class="cards">

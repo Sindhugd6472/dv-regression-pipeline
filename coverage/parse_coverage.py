@@ -95,7 +95,7 @@ def main() -> int:
     )
     print(f"Report: {args.output}")
 
-    if args.fail_on_test_failure and summary["failed"]:
+    if args.fail_on_test_failure and (summary["failed"] or not summary["total"]):
         return 1
     return 0
 
