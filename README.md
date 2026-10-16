@@ -197,3 +197,9 @@ Semiconductor verification engineer building toward EDA software, design-enablem
 ## License
 
 MIT
+
+## Regression correctness
+
+FIFO pointers wrap at DEPTH, including non-power-of-two depths and DEPTH=1. The reference-model test checks returned data, flags, blocked boundary operations, simultaneous transfers and reset. FIFO CI exercises depths 1, 3, 8 and 9. Counter checks include load priority, hold, both directions, wrap, boundary flags and reset. Functional coverage here means only the listed observed testbench events; it is not code coverage or signoff coverage.
+
+The runner preserves simulator exit status while logging. The parser rejects an empty result log when `--fail-on-test-failure` is enabled. Run `python -m unittest discover -s tests -v` and `python tools/run_regression.py`.

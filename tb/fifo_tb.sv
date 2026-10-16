@@ -1,149 +1,74 @@
-// FIFO Testbench
-// Author: Sindhu Govindareddy Doddamane
-
 `timescale 1ns/1ps
-
 module fifo_tb;
-
-  // Parameters
   parameter DEPTH = 8;
   parameter WIDTH = 8;
-
-  // Signals
-  logic             clk;
-  logic             rst_n;
-  logic             wr_en;
-  logic             rd_en;
-  logic [WIDTH-1:0] din;
-  logic [WIDTH-1:0] dout;
-  logic             full;
-  logic             empty;
-
-  // Instantiate DUT
-  fifo #(.DEPTH(DEPTH), .WIDTH(WIDTH)) dut (
-    .clk   (clk),
-    .rst_n (rst_n),
-    .wr_en (wr_en),
-    .rd_en (rd_en),
-    .din   (din),
-    .dout  (dout),
-    .full  (full),
-    .empty (empty)
-  );
-
-  // Clock Generation: 10ns period
-  initial clk = 0;
+  logic clk = 0;
   always #5 clk = ~clk;
-
-  // Coverage tracking (Icarus compatible)
-  integer cov_full_seen  = 0;
-  integer cov_empty_seen = 0;
-  integer cov_wr_seen    = 0;
-  integer cov_rd_seen    = 0;
-
-  always @(posedge clk) begin
-    if (full)  cov_full_seen  = 1;
-    if (empty) cov_empty_seen = 1;
-    if (wr_en) cov_wr_seen    = 1;
-    if (rd_en) cov_rd_seen    = 1;
-  end
-
-  // Tasks
-  task write_fifo(input logic [WIDTH-1:0] data);
-    @(posedge clk);
-    wr_en = 1;
-    din   = data;
-    @(posedge clk);
-    wr_en = 0;
-  endtask
-
-  task read_fifo();
-    @(posedge clk);
-    rd_en = 1;
-    @(posedge clk);
-    rd_en = 0;
-  endtask
-
-  // Main Test
+  logic rst_n = 0, wr_en = 0, rd_en = 0;
+  logic [WIDTH-1:0] din = 0, dout;
+  logic full, empty;
+  fifo #(.DEPTH(DEPTH), .WIDTH(WIDTH)) dut(.*);
+  logic [WIDTH-1:0] model [0:DEPTH-1];
+  logic [WIDTH-1:0] expected_dout = 0;
+  integer head = 0, tail = 0, used = 0;
   integer pass_count = 0;
-  integer fail_count = 0;
+  integer cov_full_seen = 0, cov_empty_seen = 0, cov_wr_seen = 0, cov_rd_seen = 0;
+
+  // Drive away from the active edge and compare after nonblocking updates.
+  task automatic cycle(input bit wr, input bit rd, input logic [WIDTH-1:0] data);
+    bit take_write, take_read;
+    @(negedge clk);
+    wr_en = wr; rd_en = rd; din = data;
+    take_write = wr && used < DEPTH;
+    take_read = rd && used > 0;
+    if (take_read) begin
+      expected_dout = model[head];
+      head = (head + 1) % DEPTH;
+    end
+    if (take_write) begin
+      model[tail] = data;
+      tail = (tail + 1) % DEPTH;
+    end
+    used = used + int'(take_write) - int'(take_read);
+    @(posedge clk); #1;
+    if (dout !== expected_dout || full !== (used == DEPTH) || empty !== (used == 0))
+      $fatal(1, "FAIL: FIFO mismatch used=%0d dout=%h expected=%h full=%b empty=%b", used, dout, expected_dout, full, empty);
+    cov_full_seen |= full;
+    cov_empty_seen |= empty;
+    cov_wr_seen |= take_write;
+    cov_rd_seen |= take_read;
+    pass_count++;
+  endtask
 
   initial begin
-    // Init
-    rst_n = 0; wr_en = 0; rd_en = 0; din = 0;
-    repeat(2) @(posedge clk);
+    repeat (2) @(negedge clk);
     rst_n = 1;
-
-    // Test 1: Write until FULL
-    $display("\n--- Test 1: Fill FIFO ---");
-    repeat(DEPTH) begin
-      write_fifo($random);
+    #1;
+    if (empty !== 1 || full !== 0 || dout !== 0) $fatal(1, "FAIL: Reset");
+    // Multiple fill/drain rounds expose pointer wrap and ordering errors.
+    repeat (4) begin
+      repeat (DEPTH) cycle(1, 0, $random);
+      cycle(1, 0, '1); // overflow ignored
+      repeat (DEPTH) cycle(0, 1, 0);
+      cycle(0, 1, 0); // underflow ignored
     end
-    if (full) begin
-      $display("PASS: FIFO is FULL as expected"); pass_count++;
-    end else begin
-      $display("FAIL: FIFO should be FULL"); fail_count++;
-    end
-
-    // Test 2: Write when FULL (should be ignored)
-    $display("\n--- Test 2: Write when FULL ---");
-    write_fifo(8'hFF);
-    if (full) begin
-      $display("PASS: Write ignored when FULL"); pass_count++;
-    end else begin
-      $display("FAIL: Overflow occurred"); fail_count++;
-    end
-
-    // Test 3: Read until EMPTY
-    $display("\n--- Test 3: Drain FIFO ---");
-    repeat(DEPTH) begin
-      read_fifo();
-    end
-    if (empty) begin
-      $display("PASS: FIFO is EMPTY as expected"); pass_count++;
-    end else begin
-      $display("FAIL: FIFO should be EMPTY"); fail_count++;
-    end
-
-    // Test 4: Read when EMPTY (should be ignored)
-    $display("\n--- Test 4: Read when EMPTY ---");
-    read_fifo();
-    if (empty) begin
-      $display("PASS: Read ignored when EMPTY"); pass_count++;
-    end else begin
-      $display("FAIL: Underflow occurred"); fail_count++;
-    end
-
-    // Test 5: Simultaneous Read/Write
-    $display("\n--- Test 5: Simultaneous Read/Write ---");
-    write_fifo(8'hAA);
-    @(posedge clk);
-    wr_en = 1; rd_en = 1; din = 8'hBB;
-    @(posedge clk);
-    wr_en = 0; rd_en = 0;
-    $display("PASS: Simultaneous RD/WR completed"); pass_count++;
-
-    // Summary
-    $display("\n================================");
-    $display("  TEST SUMMARY");
-    $display("  PASSED : %0d", pass_count);
-    $display("  FAILED : %0d", fail_count);
-    $display("================================\n");
-
-    // Coverage Report
-    begin
-  integer cov_total;
-  cov_total = cov_full_seen + cov_empty_seen + cov_wr_seen + cov_rd_seen;
-  $display("Functional Coverage: %0.2f%%", (cov_total / 4.0) * 100.0);
-end
-
+    cycle(1, 1, 'hAA); // empty boundary accepts only write
+    repeat (DEPTH*4) cycle(1, 1, $random);
+    repeat (DEPTH*40) cycle($random, $random, $random);
+    while (used > 0) cycle(0, 1, 0);
+    // Reset while nonempty also clears pointers, count, and output.
+    cycle(1, 0, 'h55);
+    @(negedge clk); rst_n = 0; wr_en = 0; rd_en = 0;
+    #1;
+    if (empty !== 1 || full !== 0 || dout !== 0) $fatal(1, "FAIL: Midstream reset");
+    head = 0; tail = 0; used = 0; expected_dout = 0;
+    @(negedge clk); rst_n = 1;
+    cycle(1, 0, 'h5A); cycle(0, 1, 0);
+    $display("PASS: FIFO ordering, wrap, boundaries, simultaneous operations and reset (%0d checks)", pass_count);
+    $display("Functional Coverage: %0.2f%%", (cov_full_seen + cov_empty_seen + cov_wr_seen + cov_rd_seen) * 25.0);
     $finish;
   end
-
-  // Waveform dump
   initial begin
-    $dumpfile("sim/fifo_tb.vcd");
-    $dumpvars(0, fifo_tb);
+    #1000000; $fatal(1, "FAIL: FIFO timeout");
   end
-
 endmodule

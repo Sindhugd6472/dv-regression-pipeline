@@ -53,6 +53,14 @@ jobs:
       - name: Run configured regression job
         run: python tools/run_regression.py --job ${{ matrix.design }}
 
+      - name: Check FIFO parameter depths
+        if: matrix.design == 'fifo'
+        run: |
+          for depth in 1 3 8 9; do
+            iverilog -g2012 -s fifo_tb -Pfifo_tb.DEPTH=$depth -o /tmp/fifo_sim rtl/fifo.sv tb/fifo_tb.sv
+            vvp /tmp/fifo_sim
+          done
+
       - name: Parse regression results
         run: |
           python coverage/parse_coverage.py             sim/${{ matrix.design }}_results.log             --design ${{ matrix.design }}             --output coverage/${{ matrix.design }}_report.json             --fail-on-test-failure

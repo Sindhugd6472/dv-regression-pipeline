@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import shlex
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -81,8 +81,16 @@ def main() -> int:
             continue
 
         job.log.parent.mkdir(parents=True, exist_ok=True)
-        run_with_log = f"{job.run} | tee {shlex.quote(str(job.log))}"
-        if run_command(run_with_log) != 0:
+        # Stream output without a shell pipeline: tee must not hide a simulator error.
+        with job.log.open("w", encoding="utf-8") as log:
+            process = subprocess.Popen(job.run, shell=True, stdout=subprocess.PIPE,
+                                       stderr=subprocess.STDOUT, text=True)
+            assert process.stdout is not None
+            for line in process.stdout:
+                sys.stdout.write(line)
+                log.write(line)
+            returncode = process.wait()
+        if returncode != 0:
             print(f"{job.name}: simulation failed")
             failures += 1
 
